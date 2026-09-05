@@ -1,101 +1,51 @@
-const KEY="sayoda_bot_panel_v1";
-let state=JSON.parse(localStorage.getItem(KEY)||'{"bots":[],"users":[],"logs":[],"replies":[],"settings":{"autoReply":true,"pollSeconds":5},"offsets":{}}');
-let timers={};
-
-function save(){localStorage.setItem(KEY,JSON.stringify(state));render();}
-function log(msg){state.logs.unshift({time:new Date().toLocaleString("ar-EG"),msg});state.logs=state.logs.slice(0,300);save();}
-function showPage(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===id));}
+const KEY="sayoda_pro_v2";let state=JSON.parse(localStorage.getItem(KEY)||'{"bot":null,"users":[],"logs":[],"replies":[],"offset":0}');let timer=null;
+const $=id=>document.getElementById(id);
+function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function log(m){state.logs.unshift({t:new Date().toLocaleString("ar-EG"),m});state.logs=state.logs.slice(0,300);save()}
+function showPage(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===id));window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll(".nav").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
-
-async function api(bot,method,data={}){
-  const r=await fetch(`https://api.telegram.org/bot${bot.token}/${method}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
-  return await r.json();
-}
-async function addBot(){
-  const name=document.getElementById("botName").value.trim();
-  const token=document.getElementById("botToken").value.trim();
-  if(!name||!token)return alert("اكتب اسم البوت والتوكن.");
-  const bot={id:crypto.randomUUID(),name,token,info:null};
-  const res=await api(bot,"getMe");
-  if(!res.ok)return alert("التوكن غير صحيح أو تعذر الاتصال بتيليجرام.");
-  bot.info=res.result; state.bots.push(bot); save(); log(`تمت إضافة البوت ${name}`);
-  document.getElementById("botName").value="";document.getElementById("botToken").value="";
-}
-async function checkBot(id){
-  const b=state.bots.find(x=>x.id===id); if(!b)return;
-  const r=await api(b,"getMe");
-  alert(r.ok?`🟢 البوت يعمل\n@${r.result.username}`:`🔴 تعذر الوصول إلى البوت`);
-  log(r.ok?`تم فحص البوت ${b.name} — يعمل`:`فشل فحص البوت ${b.name}`);
-}
-function removeBot(id){state.bots=state.bots.filter(x=>x.id!==id);delete state.offsets[id];save();log("تم حذف بوت");}
-function selectedBot(id){return state.bots.find(x=>x.id===id)}
-
-async function sendMessage(){
-  const b=selectedBot(document.getElementById("sendBot").value),chat=document.getElementById("chatId").value.trim(),text=document.getElementById("messageText").value;
-  if(!b||!chat||!text)return alert("أكمل البيانات.");
-  const r=await api(b,"sendMessage",{chat_id:chat,text});
-  document.getElementById("sendResult").textContent=r.ok?"✅ تم إرسال الرسالة.":"❌ فشل إرسال الرسالة.";
-  log(r.ok?`تم إرسال رسالة من ${b.name}`:`فشل إرسال رسالة من ${b.name}`);
+async function api(method,data={}){if(!state.bot)return {ok:false};const r=await fetch(`https://api.telegram.org/bot${state.bot.token}/${method}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});return await r.json()}
+async function connectBot(){
+ const token=$("botToken").value.trim();if(!token)return alert("من فضلك أدخل توكن البوت.");
+ const fake={token};const r=await (async()=>{const x=await fetch(`https://api.telegram.org/bot${token}/getMe`);return await x.json()})().catch(()=>({ok:false}));
+ if(!r.ok)return $("botResult").textContent="❌ لم نتمكن من التعرف على البوت. تأكد من التوكن.";
+ state.bot={token,info:r.result};state.offset=0;save();log(`تم ربط البوت @${r.result.username}`);$("botResult").textContent="✅ تم التعرف على البوت بنجاح.";startPolling();
 }
 async function broadcast(){
-  const b=selectedBot(document.getElementById("broadcastBot").value),ids=document.getElementById("broadcastIds").value.split(/\n|,/).map(x=>x.trim()).filter(Boolean),text=document.getElementById("broadcastText").value;
-  if(!b||!ids.length||!text)return alert("أكمل البيانات.");
-  let ok=0;for(const chat_id of ids){const r=await api(b,"sendMessage",{chat_id,text});if(r.ok)ok++;}
-  document.getElementById("broadcastResult").textContent=`✅ تم الإرسال إلى ${ok} من ${ids.length}.`;log(`إرسال جماعي: ${ok}/${ids.length}`);
+ if(!state.bot)return alert("أضف البوت أولًا.");const text=$("broadcastText").value.trim();if(!text)return alert("اكتب الرسالة.");
+ if(!state.users.length)return alert("لا يوجد مستخدمون في القائمة حتى الآن.");
+ let ok=0;for(const u of state.users){const r=await api("sendMessage",{chat_id:u.chatId,text});if(r.ok)ok++}
+ $("broadcastResult").textContent=`✅ تم الإرسال إلى ${ok} من ${state.users.length} مستخدم.`;log(`إرسال جماعي: ${ok}/${state.users.length}`);
 }
-function addReply(){
-  const botId=document.getElementById("replyBot").value,trigger=document.getElementById("replyTrigger").value.trim(),answer=document.getElementById("replyAnswer").value;
-  if(!botId||!trigger||!answer)return alert("أكمل بيانات الرد.");
-  state.replies.push({id:crypto.randomUUID(),botId,trigger,answer});save();log(`تمت إضافة رد تلقائي: ${trigger}`);
-}
-function deleteReply(id){state.replies=state.replies.filter(x=>x.id!==id);save();log("تم حذف رد تلقائي");}
-
+function addReply(){const trigger=$("replyTrigger").value.trim(),answer=$("replyAnswer").value.trim();if(!state.bot)return alert("أضف البوت أولًا.");if(!trigger||!answer)return alert("أكمل بيانات الرد.");state.replies.push({id:Date.now(),trigger,answer});save();log(`إضافة رد تلقائي: ${trigger}`);$("replyTrigger").value="";$("replyAnswer").value=""}
+function delReply(id){state.replies=state.replies.filter(x=>x.id!==id);save();log("حذف رد تلقائي")}
 async function sendButtons(){
-  const b=selectedBot(document.getElementById("buttonBot").value),chat=document.getElementById("buttonChat").value.trim(),text=document.getElementById("buttonText").value;
-  const rows=document.getElementById("buttonRows").value.split("\n").map(x=>x.trim()).filter(Boolean).map(x=>{const [a,u]=x.split("|").map(y=>y.trim());return a&&u?[{text:a,url:u}]:null}).filter(Boolean);
-  if(!b||!chat||!text||!rows.length)return alert("أكمل البيانات.");
-  const r=await api(b,"sendMessage",{chat_id:chat,text,reply_markup:{inline_keyboard:rows}});
-  alert(r.ok?"✅ تم إرسال الرسالة بالأزرار.":"❌ فشل الإرسال.");
+ if(!state.bot)return alert("أضف البوت أولًا.");if(!state.users.length)return alert("لا يوجد مستخدمون بعد.");
+ const text=$("buttonText").value.trim();const rows=$("buttonRows").value.split("\n").map(x=>{let [a,u]=x.split("|").map(y=>y.trim());return a&&u?[{text:a,url:u}]:null}).filter(Boolean);
+ if(!text||!rows.length)return alert("أكمل الرسالة والأزرار.");
+ let ok=0;for(const u of state.users){const r=await api("sendMessage",{chat_id:u.chatId,text,reply_markup:{inline_keyboard:rows}});if(r.ok)ok++}
+ alert(`تم إرسال الأزرار إلى ${ok} مستخدم.`);log(`إرسال أزرار إلى ${ok} مستخدم`);
 }
-
-async function pollBot(b){
-  if(!state.settings.autoReply)return;
-  const offset=state.offsets[b.id]||0;
-  const r=await api(b,"getUpdates",{offset,timeout:0,allowed_updates:["message"]});
-  if(!r.ok)return;
-  for(const u of r.result){
-    state.offsets[b.id]=u.update_id+1;
-    const m=u.message;if(!m||!m.chat)return;
-    const user=m.from||{};const exists=state.users.some(x=>x.id===user.id);
-    if(!exists)state.users.push({id:user.id,chatId:m.chat.id,name:user.first_name||"",username:user.username||""});
-    for(const rule of state.replies.filter(x=>x.botId===b.id)){
-      if((m.text||"").toLowerCase().includes(rule.trigger.toLowerCase())) await api(b,"sendMessage",{chat_id:m.chat.id,text:rule.answer});
-    }
-  }
-  save();
+async function poll(){
+ if(!state.bot)return;const r=await api("getUpdates",{offset:state.offset,timeout:0,allowed_updates:["message"]});if(!r.ok)return;
+ for(const u of r.result){state.offset=u.update_id+1;const m=u.message;if(!m||!m.chat)continue;const f=m.from||{};if(!state.users.some(x=>x.id===f.id)){state.users.push({id:f.id,chatId:m.chat.id,name:f.first_name||"",username:f.username||""})}
+ for(const rule of state.replies){if((m.text||"").toLowerCase().includes(rule.trigger.toLowerCase()))await api("sendMessage",{chat_id:m.chat.id,text:rule.answer})}}
+ save();$("globalStatus").textContent="متصل";$("pollStatus")?.()
 }
-function startPolling(){
-  Object.values(timers).forEach(clearInterval);timers={};
-  state.bots.forEach(b=>timers[b.id]=setInterval(()=>pollBot(b),Number(state.settings.pollSeconds)*1000));
-  document.getElementById("pollStatus").textContent=state.bots.length?`🟢 الاستقبال يعمل كل ${state.settings.pollSeconds} ثوانٍ طالما الصفحة مفتوحة.`:"لا توجد بوتات.";
-}
-function saveSettings(){
-  state.settings.autoReply=document.getElementById("autoReplyToggle").checked;
-  state.settings.pollSeconds=document.getElementById("pollSeconds").value;save();startPolling();log("تم حفظ الإعدادات");
-}
-function clearUsers(){if(confirm("مسح جميع المستخدمين؟")){state.users=[];save();log("تم مسح المستخدمين");}}
-function clearLogs(){state.logs=[];save();}
-function loadAudio(){const f=document.getElementById("audioFile").files[0];if(!f)return alert("اختر ملفًا.");document.getElementById("audioPlayer").src=URL.createObjectURL(f);}
-
+function startPolling(){if(timer)clearInterval(timer);timer=setInterval(poll,4000);poll()}
+function clearUsers(){if(confirm("هل تريد مسح جميع المستخدمين؟")){state.users=[];save();log("تم مسح قائمة المستخدمين")}}
+function clearLogs(){state.logs=[];save()}
+function enterSite(){$("intro").classList.add("fade");setTimeout(()=>$("intro").remove(),600);$("app").classList.remove("hidden");}
 function render(){
-  document.getElementById("botCount").textContent=state.bots.length;document.getElementById("userCount").textContent=state.users.length;document.getElementById("logCount").textContent=state.logs.length;document.getElementById("replyCount").textContent=state.replies.length;
-  document.getElementById("statBots").textContent=state.bots.length;document.getElementById("statUsers").textContent=state.users.length;document.getElementById("statLogs").textContent=state.logs.length;document.getElementById("statReplies").textContent=state.replies.length;
-  ["sendBot","broadcastBot","replyBot","buttonBot"].forEach(id=>{const s=document.getElementById(id);const old=s.value;s.innerHTML=state.bots.map(b=>`<option value="${b.id}">${esc(b.name)} — @${esc(b.info?.username||"")}</option>`).join("");if(state.bots.some(b=>b.id===old))s.value=old;});
-  document.getElementById("botsList").innerHTML=state.bots.length?state.bots.map(b=>`<div class="item"><b>${esc(b.name)}</b> — @${esc(b.info?.username||"غير معروف")} <span class="online">● متاح</span><button class="danger" onclick="removeBot('${b.id}')">حذف</button><button class="primary" onclick="checkBot('${b.id}')">فحص الحالة</button></div>`).join(""):"لا توجد بوتات بعد.";
-  document.getElementById("repliesList").innerHTML=state.replies.length?state.replies.map(r=>`<div class="item"><b>${esc(r.trigger)}</b> ← ${esc(r.answer)} <button class="danger" onclick="deleteReply('${r.id}')">حذف</button></div>`).join(""):"لا توجد ردود تلقائية.";
-  document.getElementById("usersList").innerHTML=state.users.length?state.users.map(u=>`<div class="item">👤 ${esc(u.name||"بدون اسم")} — ${esc(u.username?"@"+u.username:"بدون معرف")} — <code>${u.chatId}</code></div>`).join(""):"لا يوجد مستخدمون مستلمون بعد.";
-  document.getElementById("logsList").innerHTML=state.logs.map(x=>`<div class="item">${esc(x.time)} — ${esc(x.msg)}</div>`).join("")||"السجل فارغ.";
-  document.getElementById("autoReplyToggle").checked=state.settings.autoReply;document.getElementById("pollSeconds").value=state.settings.pollSeconds;
+ $("userCount").textContent=state.users.length;$("replyCount").textContent=state.replies.length;$("logCount").textContent=state.logs.length;$("audienceCount").textContent=state.users.length;$("usersTotal").textContent=state.users.length;$("sUsers").textContent=state.users.length;$("sReplies").textContent=state.replies.length;$("sLogs").textContent=state.logs.length;
+ if(state.bot){$("dashBot").textContent=state.bot.info.first_name||"البوت";$("dashUsername").textContent="@"+state.bot.info.username;$("botResult").textContent="البوت متصل حاليًا: @"+state.bot.info.username;$("connectedBox").innerHTML=`<div class="item"><b>🤖 @${esc(state.bot.info.username)}</b> — ${esc(state.bot.info.first_name||"")}<button class="danger" onclick="disconnectBot()">إزالة البوت</button></div>`}else{$("dashBot").textContent="لم تتم إضافة بوت";$("dashUsername").textContent="أضف التوكن للبدء";$("connectedBox").innerHTML=""}
+ $("repliesList").innerHTML=state.replies.map(r=>`<div class="item"><b>${esc(r.trigger)}</b> ← ${esc(r.answer)} <button class="danger" onclick="delReply(${r.id})">حذف</button></div>`).join("")||'<div class="muted">لا توجد ردود حتى الآن.</div>';
+ $("usersList").innerHTML=state.users.map(u=>`<div class="item">👤 <b>${esc(u.name||"بدون اسم")}</b> ${u.username?"— @"+esc(u.username):""} <span style="float:left">${esc(u.chatId)}</span></div>`).join("")||'<div class="muted">ستظهر المستخدمون هنا بعد تواصلهم مع البوت.</div>';
+ $("logsList").innerHTML=state.logs.map(x=>`<div class="item">${esc(x.t)} — ${esc(x.m)}</div>`).join("")||'<div class="muted">السجل فارغ.</div>';
 }
-function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-render();startPolling();
+function disconnectBot(){if(confirm("إزالة البوت من هذه اللوحة؟")){state.bot=null;state.offset=0;save();if(timer)clearInterval(timer);log("تمت إزالة البوت")}}
+render();
+
+const canvas=$("matrix"),ctx=canvas.getContext("2d");let W,H,cols,drops;function matrix(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;cols=Math.floor(W/15);drops=Array(cols).fill(0)}matrix();addEventListener("resize",matrix);setInterval(()=>{ctx.fillStyle="rgba(3,6,11,.12)";ctx.fillRect(0,0,W,H);ctx.fillStyle="#1598d8";ctx.font="12px monospace";drops.forEach((y,i)=>{ctx.fillText(Math.random()>.5?"1":"0",i*15,y*15);if(y*15>H&&Math.random()>.975)drops[i]=0;drops[i]++})},55);
+const lines=["> تهيئة مركز القيادة","> تحميل واجهة SAYODA","> تجهيز أدوات الإدارة","> كل شيء جاهز — أهلاً بك"];let li=0,ci=0;function type(){if(li>=lines.length)return;$("typing").textContent=lines[li].slice(0,ci++);if(ci>lines[li].length){li++;ci=0;setTimeout(type,450)}else setTimeout(type,35)}type();
