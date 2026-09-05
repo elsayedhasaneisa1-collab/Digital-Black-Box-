@@ -1,0 +1,10 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SAYODA // BOT CONTROL</title><link rel="stylesheet" href="style.css"></head><body>
+<header><b>SAYODA <span>// BOT CONTROL</span></b><i id="status">● OFFLINE</i></header>
+<main><section id="connect" class="hero"><div class="bot">🤖</div><small>TELEGRAM CONTROL CENTER</small><h1>تحكم في بوتك</h1><p>أدخل Token البوت للاتصال مباشرة بـ Telegram Bot API.</p><div class="box"><label>BOT TOKEN</label><input id="token" type="password" placeholder="123456789:AA..."><button id="connectBtn">⚡ CONNECT BOT</button><em>يُستخدم الـToken داخل متصفحك فقط.</em></div><div id="error"></div></section>
+<section id="app" class="hidden"><div class="bothead"><strong id="botName">BOT</strong><span id="botUser">@---</span><button id="disconnect">Disconnect</button></div><div class="layout"><nav><button class="active" data-page="home">⌂ الرئيسية</button><button data-page="send">✉ إرسال رسالة</button><button data-page="broadcast">📢 Broadcast</button><button data-page="info">ℹ معلومات البوت</button></nav><div class="pages">
+<section id="home" class="page"><h2>CONTROL CENTER</h2><div class="cards"><div>STATUS<b>ONLINE</b></div><div>BOT<b id="dashName">---</b></div><div>MODE<b>DIRECT API</b></div></div><pre id="log">> SYSTEM READY
+> WAITING FOR COMMAND...</pre></section>
+<section id="send" class="page hidden"><h2>إرسال رسالة</h2><label>CHAT ID</label><input id="chatId" placeholder="123456789"><label>MESSAGE</label><textarea id="message"></textarea><button class="primary" id="sendMessage">SEND MESSAGE</button></section>
+<section id="broadcast" class="page hidden"><h2>Broadcast</h2><label>CHAT IDs — كل ID في سطر</label><textarea id="ids"></textarea><label>MESSAGE</label><textarea id="broadcastMsg"></textarea><button class="primary" id="sendBroadcast">SEND BROADCAST</button></section>
+<section id="info" class="page hidden"><h2>BOT INFORMATION</h2><div id="botInfo"></div></section>
+</div></div></section></main><footer>SAYODA // BOT CONTROL</footer><script src="script.js"></script></body></html>
