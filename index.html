@@ -1,10 +1,179 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SAYODA // BOT CONTROL</title><link rel="stylesheet" href="style.css"></head><body>
-<header><b>SAYODA <span>// BOT CONTROL</span></b><i id="status">● OFFLINE</i></header>
-<main><section id="connect" class="hero"><div class="bot">🤖</div><small>TELEGRAM CONTROL CENTER</small><h1>تحكم في بوتك</h1><p>أدخل Token البوت للاتصال مباشرة بـ Telegram Bot API.</p><div class="box"><label>BOT TOKEN</label><input id="token" type="password" placeholder="123456789:AA..."><button id="connectBtn">⚡ CONNECT BOT</button><em>يُستخدم الـToken داخل متصفحك فقط.</em></div><div id="error"></div></section>
-<section id="app" class="hidden"><div class="bothead"><strong id="botName">BOT</strong><span id="botUser">@---</span><button id="disconnect">Disconnect</button></div><div class="layout"><nav><button class="active" data-page="home">⌂ الرئيسية</button><button data-page="send">✉ إرسال رسالة</button><button data-page="broadcast">📢 Broadcast</button><button data-page="info">ℹ معلومات البوت</button></nav><div class="pages">
-<section id="home" class="page"><h2>CONTROL CENTER</h2><div class="cards"><div>STATUS<b>ONLINE</b></div><div>BOT<b id="dashName">---</b></div><div>MODE<b>DIRECT API</b></div></div><pre id="log">> SYSTEM READY
-> WAITING FOR COMMAND...</pre></section>
-<section id="send" class="page hidden"><h2>إرسال رسالة</h2><label>CHAT ID</label><input id="chatId" placeholder="123456789"><label>MESSAGE</label><textarea id="message"></textarea><button class="primary" id="sendMessage">SEND MESSAGE</button></section>
-<section id="broadcast" class="page hidden"><h2>Broadcast</h2><label>CHAT IDs — كل ID في سطر</label><textarea id="ids"></textarea><label>MESSAGE</label><textarea id="broadcastMsg"></textarea><button class="primary" id="sendBroadcast">SEND BROADCAST</button></section>
-<section id="info" class="page hidden"><h2>BOT INFORMATION</h2><div id="botInfo"></div></section>
-</div></div></section></main><footer>SAYODA // BOT CONTROL</footer><script src="script.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAYODA | لوحة تحكم البوت</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg"></div>
+
+<header class="topbar">
+  <div class="brand">SAYODA <span>//</span> BOT CONTROL</div>
+  <div class="top-actions">
+    <a class="social whatsapp" href="https://whatsapp.com/channel/0029Vb7jjYNBPzjSwQ7HR42b" target="_blank" rel="noopener">قناة الواتساب</a>
+    <a class="social telegram" href="https://t.me/sayoda_elgadar" target="_blank" rel="noopener">تيليجرام</a>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <button class="nav active" data-page="home">🏠 الرئيسية</button>
+    <button class="nav" data-page="bots">🤖 البوتات</button>
+    <button class="nav" data-page="send">💬 إرسال رسالة</button>
+    <button class="nav" data-page="broadcast">📢 الإرسال الجماعي</button>
+    <button class="nav" data-page="replies">⚡ الردود التلقائية</button>
+    <button class="nav" data-page="buttons">🔘 الأزرار والقوائم</button>
+    <button class="nav" data-page="users">👥 المستخدمون</button>
+    <button class="nav" data-page="voice">🎙️ الصوت</button>
+    <button class="nav" data-page="stats">📊 الإحصائيات</button>
+    <button class="nav" data-page="logs">📜 سجل الأحداث</button>
+    <button class="nav" data-page="settings">⚙️ الإعدادات</button>
+  </aside>
+
+  <main class="content">
+    <section id="home" class="page active">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">SAYODA // DIGITAL CONTROL</p>
+          <h1>لوحة تحكم بوت تيليجرام</h1>
+          <p>أضف التوكن، اختر البوت، وتحكم في وظائفه من لوحة واحدة.</p>
+          <button class="primary" onclick="showPage('bots')">ابدأ بإضافة بوت</button>
+        </div>
+        <div class="orb">🤖</div>
+      </div>
+      <div class="cards">
+        <div class="card"><b id="botCount">0</b><span>البوتات</span></div>
+        <div class="card"><b id="userCount">0</b><span>المستخدمون</span></div>
+        <div class="card"><b id="logCount">0</b><span>الأحداث</span></div>
+        <div class="card"><b id="replyCount">0</b><span>الردود</span></div>
+      </div>
+      <div class="notice">⚠️ النسخة تعمل بدون باك إند. الاستقبال والردود التلقائية تعمل طالما الصفحة مفتوحة.</div>
+    </section>
+
+    <section id="bots" class="page">
+      <h2>🤖 إدارة البوتات</h2>
+      <div class="panel">
+        <h3>إضافة بوت</h3>
+        <input id="botName" placeholder="اسم البوت">
+        <input id="botToken" type="password" placeholder="توكن البوت">
+        <button class="primary" onclick="addBot()">إضافة البوت</button>
+      </div>
+      <div class="panel">
+        <h3>البوتات المضافة</h3>
+        <div id="botsList"></div>
+      </div>
+    </section>
+
+    <section id="send" class="page">
+      <h2>💬 إرسال رسالة</h2>
+      <div class="panel">
+        <select id="sendBot"></select>
+        <input id="chatId" placeholder="معرّف المحادثة Chat ID">
+        <textarea id="messageText" placeholder="اكتب الرسالة هنا..."></textarea>
+        <button class="primary" onclick="sendMessage()">إرسال الرسالة</button>
+        <div id="sendResult" class="result"></div>
+      </div>
+    </section>
+
+    <section id="broadcast" class="page">
+      <h2>📢 الإرسال الجماعي</h2>
+      <div class="panel">
+        <select id="broadcastBot"></select>
+        <textarea id="broadcastIds" placeholder="ضع معرفات المحادثات، كل معرف في سطر"></textarea>
+        <textarea id="broadcastText" placeholder="اكتب الرسالة الجماعية..."></textarea>
+        <button class="primary" onclick="broadcast()">بدء الإرسال</button>
+        <div id="broadcastResult" class="result"></div>
+      </div>
+    </section>
+
+    <section id="replies" class="page">
+      <h2>⚡ الردود التلقائية</h2>
+      <div class="panel">
+        <select id="replyBot"></select>
+        <input id="replyTrigger" placeholder="الكلمة أو العبارة">
+        <textarea id="replyAnswer" placeholder="الرد الذي سيُرسل للمستخدم"></textarea>
+        <button class="primary" onclick="addReply()">إضافة رد</button>
+      </div>
+      <div class="panel"><div id="repliesList"></div></div>
+    </section>
+
+    <section id="buttons" class="page">
+      <h2>🔘 الأزرار والقوائم</h2>
+      <div class="panel">
+        <select id="buttonBot"></select>
+        <input id="buttonChat" placeholder="معرّف المحادثة Chat ID">
+        <textarea id="buttonText" placeholder="نص الرسالة"></textarea>
+        <textarea id="buttonRows" placeholder="اكتب الأزرار بهذا الشكل:
+الرئيسية | https://example.com
+تواصل معنا | https://t.me/sayoda_elgadar"></textarea>
+        <button class="primary" onclick="sendButtons()">إرسال الأزرار</button>
+        <div class="muted">كل سطر = اسم الزر | الرابط</div>
+      </div>
+    </section>
+
+    <section id="users" class="page">
+      <h2>👥 المستخدمون</h2>
+      <div class="panel">
+        <p class="muted">المستخدمون الذين يتم استقبالهم أثناء تشغيل اللوحة.</p>
+        <button class="danger" onclick="clearUsers()">مسح المستخدمين</button>
+        <div id="usersList"></div>
+      </div>
+    </section>
+
+    <section id="voice" class="page">
+      <h2>🎙️ معالجة الصوت</h2>
+      <div class="panel">
+        <input type="file" id="audioFile" accept="audio/*">
+        <button class="primary" onclick="loadAudio()">تشغيل التسجيل</button>
+        <audio id="audioPlayer" controls></audio>
+        <p class="muted">هذه الأدوات تعالج ملفًا تختاره من جهازك. المعالجة التلقائية لتسجيلات تيليجرام أثناء إغلاق الصفحة تحتاج باك إند.</p>
+      </div>
+    </section>
+
+    <section id="stats" class="page">
+      <h2>📊 الإحصائيات</h2>
+      <div class="cards">
+        <div class="card"><b id="statBots">0</b><span>البوتات</span></div>
+        <div class="card"><b id="statUsers">0</b><span>المستخدمون</span></div>
+        <div class="card"><b id="statLogs">0</b><span>الأحداث</span></div>
+        <div class="card"><b id="statReplies">0</b><span>الردود</span></div>
+      </div>
+    </section>
+
+    <section id="logs" class="page">
+      <h2>📜 سجل الأحداث</h2>
+      <div class="panel">
+        <button class="danger" onclick="clearLogs()">مسح السجل</button>
+        <div id="logsList"></div>
+      </div>
+    </section>
+
+    <section id="settings" class="page">
+      <h2>⚙️ الإعدادات</h2>
+      <div class="panel">
+        <label>تشغيل الردود التلقائية</label>
+        <input type="checkbox" id="autoReplyToggle" checked>
+        <label>فحص الرسائل كل</label>
+        <select id="pollSeconds">
+          <option value="2">ثانيتين</option>
+          <option value="5" selected>5 ثوانٍ</option>
+          <option value="10">10 ثوانٍ</option>
+        </select>
+        <button class="primary" onclick="saveSettings()">حفظ الإعدادات</button>
+        <p id="pollStatus" class="muted">لم يبدأ الاستقبال بعد.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <a href="https://t.me/sayoda_elgadar" target="_blank" rel="noopener">EL-SAYED HASAN</a>
+  <span> — جميع الحقوق محفوظة</span>
+  <a href="https://whatsapp.com/channel/0029Vb7jjYNBPzjSwQ7HR42b" target="_blank" rel="noopener">قناة الواتساب</a>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
